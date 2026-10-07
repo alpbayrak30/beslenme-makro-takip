@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="tr" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitTakip - Beslenme ve Su Takip Günlüğü</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 9999px; }
+        .dark ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        .dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen flex flex-col antialiased transition-colors duration-200">
+
+    <!-- Header / Navbar -->
+    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30 shadow-sm flex-shrink-0">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-brand-500 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-utensils text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold leading-tight text-gray-900 dark:text-white">FitTakip</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Beslenme, Kilo & Su Günlüğü</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <button id="themeToggleBtn" onclick="toggleDarkMode()" class="p-2.5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                    <i class="fa-solid fa-moon text-lg dark:hidden"></i>
+                    <i class="fa-solid fa-sun text-lg hidden dark:block text-amber-400"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 pt-4 pb-28 md:pb-12 overflow-y-auto">
+        
+        <!-- Navigation Tabs (Desktop) -->
+        <nav class="hidden md:flex space-x-2 mb-6 bg-gray-200 dark:bg-gray-800 p-1.5 rounded-2xl">
+            <button onclick="switchTab('dashboard')" class="tab-btn-desktop flex-1 py-2.5 px-4 rounded-xl font-medium text-sm transition flex items-center justify-center space-x-2 bg-white dark:bg-gray-700 text-brand-600 dark:text-brand-400 shadow-sm" data-tab="dashboard">
+                <i class="fa-solid fa-chart-pie"></i><span>Özet & Günlük</span>
+            </button>
+            <button onclick="switchTab('meals')" class="tab-btn-desktop flex-1 py-2.5 px-4 rounded-xl font-medium text-sm transition flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-gray-900" data-tab="meals">
+                <i class="fa-solid fa-utensils"></i><span>Öğün Takibi</span>
+            </button>
+            <button onclick="switchTab('water')" class="tab-btn-desktop flex-1 py-2.5 px-4 rounded-xl font-medium text-sm transition flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-gray-900" data-tab="water">
+                <i class="fa-solid fa-droplet"></i><span>Su Takibi</span>
+            </button>
+            <button onclick="switchTab('analytics')" class="tab-btn-desktop flex-1 py-2.5 px-4 rounded-xl font-medium text-sm transition flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-gray-900" data-tab="analytics">
+                <i class="fa-solid fa-chart-line"></i><span>Grafikler</span>
+            </button>
+            <button onclick="switchTab('profile')" class="tab-btn-desktop flex-1 py-2.5 px-4 rounded-xl font-medium text-sm transition flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-gray-900" data-tab="profile">
+                <i class="fa-solid fa-user"></i><span>Profil & BMR</span>
+            </button>
+        </nav>
+
+        <!-- Date Selector Bar -->
+        <div class="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 mb-6 flex items-center justify-between">
+            <button onclick="changeDate(-1)" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="flex items-center space-x-2">
+                <i class="fa-regular fa-calendar text-brand-500 text-lg"></i>
+                <input type="date" id="selectedDateInput" onchange="onDateInputChange(event)" class="bg-transparent font-semibold text-gray-800 dark:text-gray-100 border-none focus:outline-none cursor-pointer">
+            </div>
+            <button onclick="changeDate(1)" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <!-- TAB CONTENT: DASHBOARD -->
+        <section id="tab-dashboard" class="tab-content space-y-6">
+            <!-- Summary Macro Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
+                    <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Kalori</div>
+                    <div class="flex items-baseline justify-between">
+                        <span class="text-2xl font-bold text-gray-800 dark:text-white" id="dashCalTotal">0</span>
+                        <span class="text-xs text-gray-500" id="dashCalTarget">/ 2000 kcal</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 mt-3 overflow-hidden">
+                        <div id="dashCalBar" class="bg-brand-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
+                    <div class="text-xs font-semibold text-blue-500 uppercase tracking-wider mb-1">Protein</div>
+                    <div class="flex items-baseline justify-between">
+                        <span class="text-2xl font-bold text-gray-800 dark:text-white" id="dashProteinTotal">0g</span>
+                        <span class="text-xs text-gray-500" id="dashProteinTarget">/ 120g</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 mt-3 overflow-hidden">
+                        <div id="dashProteinBar" class="bg-blue-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
+                    <div class="text-xs font-semibold text-amber-500 uppercase tracking-wider mb-1">Karbonhidrat</div>
+                    <div class="flex items-baseline justify-between">
+                        <span class="text-2xl font-bold text-gray-800 dark:text-white" id="dashCarbTotal">0g</span>
+                        <span class="text-xs text-gray-500" id="dashCarbTarget">/ 250g</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 mt-3 overflow-hidden">
+                        <div id="dashCarbBar" class="bg-amber-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
+                    <div class="text-xs font-semibold text-rose-500 uppercase tracking-wider mb-1">Yağ</div>
+                    <div class="flex items-baseline justify-between">
+                        <span class="text-2xl font-bold text-gray-800 dark:text-white" id="dashFatTotal">0g</span>
+                        <span class="text-xs text-gray-500" id="dashFatTarget">/ 65g</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 mt-3 overflow-hidden">
+                        <div id="dashFatBar" class="bg-rose-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weight & Water Trackers -->
+            <div class="grid md:grid-cols-3 gap-4">
+                <!-- Daily Weight Tracker -->
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                <i class="fa-solid fa-weight-scale text-emerald-500"></i> Günlük Kilo
+                            </h3>
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300" id="dashWeightBadge">-- kg</span>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Seçili gün için kilonuzu girin ve güncelleyin.</p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="text-center py-1">
+                            <span class="text-3xl font-extrabold text-gray-800 dark:text-white" id="dashWeightValue">--</span>
+                            <span class="text-sm text-gray-500"> kg</span>
+                        </div>
+                        <button onclick="openWeightModal()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-pen"></i> Günün Kilosunu Gir / Güncelle
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Water Quick Tracker -->
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                <i class="fa-solid fa-droplet text-sky-500"></i> Günlük Su
+                            </h3>
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-sky-50 dark:bg-sky-900/40 text-sky-600 dark:text-sky-300" id="dashWaterText">0 / 2500 ml</span>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Hidrasyon hedefinizi tamamlamak için su tüketin.</p>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                            <div id="dashWaterBar" class="bg-sky-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="addWater(250)" class="py-2 bg-sky-50 dark:bg-sky-900/30 hover:bg-sky-100 text-sky-600 dark:text-sky-300 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-plus text-xs"></i> 250 ml (Bardak)
+                            </button>
+                            <button onclick="addWater(500)" class="py-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1 shadow-sm">
+                                <i class="fa-solid fa-plus text-xs"></i> 500 ml (Şişe)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Meal Overview List -->
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-brand-500"></i> Günün Öğünleri
+                        </h3>
+                        <button onclick="switchTab('meals')" class="text-xs text-brand-600 dark:text-brand-400 font-semibold hover:underline">Ekle / Yönet</button>
+                    </div>
+                    <div id="dashMealsSummaryList" class="space-y-3 max-h-48 overflow-y-auto pr-1">
+                        <!-- Dynamic items -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB CONTENT: MEALS -->
+        <section id="tab-meals" class="tab-content hidden space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Öğün Takibi</h2>
+                <button onclick="openMealModal()" class="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Yiyecek Ekle
+                </button>
+            </div>
+
+            <div id="mealsContainer" class="space-y-4">
+                <!-- Dynamic categories loaded here -->
+            </div>
+        </section>
+
+        <!-- TAB CONTENT: WATER -->
+        <section id="tab-water" class="tab-content hidden space-y-6">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 text-center space-y-4">
+                <div class="w-20 h-20 bg-sky-100 dark:bg-sky-900/40 text-sky-500 rounded-full flex items-center justify-center mx-auto text-3xl shadow-inner">
+                    <i class="fa-solid fa-glass-water"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white" id="waterMainTotal">0 / 2500 ml</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Günlük Su Tüketim Hedefi</p>
+                </div>
+                <div class="max-w-md mx-auto bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden">
+                    <div id="waterMainBar" class="bg-sky-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-lg mx-auto pt-4">
+                    <button onclick="addWater(200)" class="p-3 bg-sky-50 dark:bg-sky-900/30 hover:bg-sky-100 text-sky-600 dark:text-sky-300 font-semibold rounded-xl transition text-sm">+200 ml</button>
+                    <button onclick="addWater(250)" class="p-3 bg-sky-50 dark:bg-sky-900/30 hover:bg-sky-100 text-sky-600 dark:text-sky-300 font-semibold rounded-xl transition text-sm">+250 ml</button>
+                    <button onclick="addWater(330)" class="p-3 bg-sky-50 dark:bg-sky-900/30 hover:bg-sky-100 text-sky-600 dark:text-sky-300 font-semibold rounded-xl transition text-sm">+330 ml</button>
+                    <button onclick="addWater(500)" class="p-3 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-xl shadow-sm transition text-sm">+500 ml</button>
+                </div>
+                <div class="pt-2">
+                    <button onclick="resetWater()" class="text-xs text-rose-500 hover:underline">Sıfırla</button>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
+                <h3 class="font-bold text-gray-800 dark:text-white mb-3">Günlük Su Kayıtları</h3>
+                <div id="waterLogsList" class="space-y-2 text-sm"></div>
+            </div>
+        </section>
+
+        <!-- TAB CONTENT: ANALYTICS -->
+        <section id="tab-analytics" class="tab-content hidden space-y-6">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Gelişim & Grafikler</h2>
+                <div class="flex bg-gray-200 dark:bg-gray-700 p-1 rounded-xl text-xs font-semibold">
+                    <button id="range7Btn" onclick="setAnalyticsRange(7)" class="px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white shadow-sm">7 Gün</button>
+                    <button id="range30Btn" onclick="setAnalyticsRange(30)" class="px-3 py-1.5 rounded-lg text-gray-500 hover:text-gray-800 dark:hover:text-white">30 Gün</button>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Calorie Chart -->
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
+                    <h3 class="font-bold text-gray-800 dark:text-white text-sm mb-4">Kalori Alımı (kcal)</h3>
+                    <div class="h-64"><canvas id="calorieChart"></canvas></div>
+                </div>
+
+                <!-- Weight Progress Chart -->
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-gray-800 dark:text-white text-sm">Kilo Gelişimi (kg - Gün Gün)</h3>
+                        <button onclick="openWeightModal()" class="text-xs bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 font-semibold px-2.5 py-1 rounded-lg hover:bg-brand-100">Kilo Ekle</button>
+                    </div>
+                    <div class="h-64"><canvas id="weightChart"></canvas></div>
+                </div>
+
+                <!-- Macros Breakdown Chart -->
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
+                    <h3 class="font-bold text-gray-800 dark:text-white text-sm mb-4">Makro Dağılımı (Ortalama g)</h3>
+                    <div class="h-64"><canvas id="macroChart"></canvas></div>
+                </div>
+
+                <!-- Water Consumption Chart -->
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
+                    <h3 class="font-bold text-gray-800 dark:text-white text-sm mb-4">Su Tüketimi (ml)</h3>
+                    <div class="h-64"><canvas id="waterChart"></canvas></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB CONTENT: PROFILE -->
+        <section id="tab-profile" class="tab-content hidden space-y-6">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 space-y-6">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-1">Fiziksel Profil & Hedefler</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">BMR ve TDEE otomatik hesaplanır.</p>
+                </div>
+
+                <form id="profileForm" onsubmit="saveProfile(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Cinsiyet</label>
+                            <select id="profGender" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-2.5 text-sm">
+                                <option value="male">Erkek</option>
+                                <option value="female">Kadın</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Yaş</label>
+                            <input type="number" id="profAge" min="10" max="100" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-2.5 text-sm" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Boy (cm)</label>
+                            <input type="number" id="profHeight" min="100" max="250" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-2.5 text-sm" required>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Mevcut Kilo (kg)</label>
+                            <input type="number" step="0.1" id="profWeight" min="30" max="300" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-2.5 text-sm" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Aktivite Seviyesi</label>
+                            <select id="profActivity" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-2.5 text-sm">
+                                <option value="1.2">Masabaşı / Hareketsiz</option>
+                                <option value="1.375">Hafif Egzersiz (Haftada 1-3 gün)</option>
+                                <option value="1.55">Orta Egzersiz (Haftada 3-5 gün)</option>
+                                <option value="1.725">Yoğun Egzersiz (Haftada 6-7 gün)</option>
+                                <option value="1.9">Çok Yoğun / Atletik</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Hedefiniz</label>
+                        <select id="profGoal" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-2.5 text-sm">
+                            <option value="-500">Kilo Vermek (-500 kcal)</option>
+                            <option value="0">Kilo Korumak (Bakım Kalorisi)</option>
+                            <option value="500">Kilo Almak / Kas Yapmak (+500 kcal)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 rounded-xl transition shadow-sm">
+                        Hesapla ve Profil Kaydet
+                    </button>
+                </form>
+
+                <div class="p-4 bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800 rounded-xl grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div>
+                        <span class="text-xs text-gray-500 dark:text-gray-400 block">BMR</span>
+                        <span class="text-lg font-bold text-brand-700 dark:text-brand-300" id="calcBMR">0 kcal</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500 dark:text-gray-400 block">TDEE</span>
+                        <span class="text-lg font-bold text-brand-700 dark:text-brand-300" id="calcTDEE">0 kcal</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500 dark:text-gray-400 block">Hedef Kalori</span>
+                        <span class="text-lg font-bold text-brand-700 dark:text-brand-300" id="calcGoalCal">0 kcal</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500 dark:text-gray-400 block">Hedef Su</span>
+                        <span class="text-lg font-bold text-sky-600 dark:text-sky-400" id="calcGoalWater">2500 ml</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Mobile Navigation -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-40 px-2 py-2 shadow-lg">
+        <div class="grid grid-cols-5 gap-1 text-center">
+            <button onclick="switchTab('dashboard')" class="tab-btn-mobile flex flex-col items-center py-1.5 rounded-xl text-brand-500 font-medium" data-tab="dashboard">
+                <i class="fa-solid fa-chart-pie text-lg"></i>
+                <span class="text-[10px] mt-0.5">Özet</span>
+            </button>
+            <button onclick="switchTab('meals')" class="tab-btn-mobile flex flex-col items-center py-1.5 rounded-xl text-gray-500 dark:text-gray-400" data-tab="meals">
+                <i class="fa-solid fa-utensils text-lg"></i>
+                <span class="text-[10px] mt-0.5">Öğünler</span>
+            </button>
+            <button onclick="switchTab('water')" class="tab-btn-mobile flex flex-col items-center py-1.5 rounded-xl text-gray-500 dark:text-gray-400" data-tab="water">
+                <i class="fa-solid fa-droplet text-lg"></i>
+                <span class="text-[10px] mt-0.5">Su</span>
+            </button>
+            <button onclick="switchTab('analytics')" class="tab-btn-mobile flex flex-col items-center py-1.5 rounded-xl text-gray-500 dark:text-gray-400" data-tab="analytics">
+                <i class="fa-solid fa-chart-line text-lg"></i>
+                <span class="text-[10px] mt-0.5">Grafikler</span>
+            </button>
+            <button onclick="switchTab('profile')" class="tab-btn-mobile flex flex-col items-center py-1.5 rounded-xl text-gray-500 dark:text-gray-400" data-tab="profile">
+                <i class="fa-solid fa-user text-lg"></i>
+                <span class="text-[10px] mt-0.5">Profil</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- MEAL / FOOD ADD MODAL -->
+    <div id="mealModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-gray-100 dark:border-gray-700">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="modalTitle">Yiyecek Ekle</h3>
+                <button onclick="closeMealModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <form id="mealForm" onsubmit="saveMealItem(event)" class="space-y-4">
+                <input type="hidden" id="editMealId">
+                
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Öğün Tipi</label>
+                    <select id="mealTypeSelect" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-2.5 text-sm" required>
+                        <option value="Kahvaltı">Kahvaltı</option>
+                        <option value="Öğle Yemeği">Öğle Yemeği</option>
+                        <option value="Akşam Yemeği">Akşam Yemeği</option>
+                        <option value="Atıştırmalık / Ara Öğün">Atıştırmalık / Ara Öğün</option>
+                    </select>
+                </div>
+
+                <!-- Food Search -->
+                <div class="relative">
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Yiyecek Arama (Genişletilmiş Veritabanı)</label>
+                    <div class="relative">
+                        <input type="text" id="foodSearchInput" oninput="onFoodSearchInput(this.value)" placeholder="Örn: Çiğ Tavuk Göğsü, Haşlanmış Pirinç, Badem..." class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-2.5 pl-9 text-sm focus:ring-2 focus:ring-brand-500 outline-none" autocomplete="off" required>
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-gray-400 text-sm"></i>
+                        <div id="searchSpinner" class="hidden absolute right-3 top-3">
+                            <i class="fa-solid fa-circle-notch animate-spin text-brand-500 text-sm"></i>
+                        </div>
+                    </div>
+
+                    <!-- Autocomplete Dropdown List -->
+                    <div id="autocompleteList" class="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto hidden"></div>
+                </div>
+
+                <!-- Quick Food Suggestions -->
+                <div>
+                    <span class="text-[11px] text-gray-400 font-medium block mb-1">Hızlı Seçim Önerileri:</span>
+                    <div class="flex flex-wrap gap-1.5" id="quickFoodTags"></div>
+                </div>
+
+                <!-- Portion / Weight Input -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Miktar</label>
+                        <input type="number" id="foodAmount" min="0.1" step="any" value="100" oninput="recalculateMacros()" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-2.5 text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Birim</label>
+                        <select id="foodUnit" onchange="recalculateMacros()" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-2.5 text-sm">
+                            <option value="g">Gram (g)</option>
+                            <option value="portion">Porsiyon</option>
+                            <option value="piece">Adet</option>
+                            <option value="slice">Dilim</option>
+                            <option value="handful">Avuç</option>
+                            <option value="tbsp">Yemek Kaşığı</option>
+                            <option value="glass">Su Bardağı</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Calculated Macro Fields -->
+                <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-600 grid grid-cols-4 gap-2 text-center">
+                    <div>
+                        <label class="block text-[10px] text-gray-400 uppercase">Kalori</label>
+                        <input type="number" id="foodCal" step="0.1" class="w-full text-center bg-transparent font-bold text-gray-800 dark:text-white text-sm outline-none" required>
+                        <span class="text-[10px] text-gray-400">kcal</span>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-blue-500 uppercase">Protein</label>
+                        <input type="number" id="foodProt" step="0.1" class="w-full text-center bg-transparent font-bold text-gray-800 dark:text-white text-sm outline-none" required>
+                        <span class="text-[10px] text-gray-400">g</span>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-amber-500 uppercase">Karb</label>
+                        <input type="number" id="foodCarb" step="0.1" class="w-full text-center bg-transparent font-bold text-gray-800 dark:text-white text-sm outline-none" required>
+                        <span class="text-[10px] text-gray-400">g</span>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-rose-500 uppercase">Yağ</label>
+                        <input type="number" id="foodFat" step="0.1" class="w-full text-center bg-transparent font-bold text-gray-800 dark:text-white text-sm outline-none" required>
+                        <span class="text-[10px] text-gray-400">g</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeMealModal()" class="px-4 py-2.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl">İptal</button>
+                    <button type="submit" class="px-5 py-2.5 text-xs font-semibold bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-sm">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- WEIGHT ENTRY MODAL -->
+    <div id="weightModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-xs w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-700">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-1">Kilo Gir / Güncelle</h3>
+            <p class="text-xs text-gray-400 mb-4" id="weightModalDateLabel"></p>
+            <form onsubmit="saveWeight(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Kilo (kg)</label>
+                    <input type="number" id="weightInput" step="0.1" min="30" max="300" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-2.5 text-sm" required>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeWeightModal()" class="px-3 py-2 text-xs font-semibold text-gray-600 dark:text-gray-300">İptal</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-semibold bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-sm">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // USDA Standartlarına ve FatSecret Verilerine Uygun Genişletilmiş Yerel Besin Veritabanı (100g Değerleri)
+        const LOCAL_FOOD_DATABASE = [
+            // ==================== TAVUK & HİNDİ (ÇİĞ VE PİŞMİŞ) ====================
+            { id: 'fs_101', category: 'Protein', name: 'Tavuk Göğsü (Çiğ)', per100g: { cal: 110, prot: 23.1, carb: 0.0, fat: 1.2 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_102', category: 'Protein', name: 'Tavuk Göğsü (Izgara / Haşlanmış)', per100g: { cal: 165, prot: 31.0, carb: 0.0, fat: 3.6 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_103', category: 'Protein', name: 'Tavuk Bud / Pirzola Derisiz (Çiğ)', per100g: { cal: 120, prot: 19.5, carb: 0.0, fat: 4.5 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_104', category: 'Protein', name: 'Tavuk Bud / Pirzola Derisiz (Pişmiş)', per100g: { cal: 209, prot: 24.0, carb: 0.0, fat: 12.0 }, defaultUnit: 'piece', defaultWeight: 120 },
+            { id: 'fs_105', category: 'Protein', name: 'Tavuk Kıyma (Çiğ)', per100g: { cal: 143, prot: 17.4, carb: 0.0, fat: 8.1 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_106', category: 'Protein', name: 'Tavuk Kıyma (Pişmiş)', per100g: { cal: 188, prot: 23.5, carb: 0.0, fat: 10.2 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_107', category: 'Protein', name: 'Hindi Göğsü (Çiğ)', per100g: { cal: 104, prot: 23.8, carb: 0.0, fat: 1.0 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_108', category: 'Protein', name: 'Hindi Göğsü (Izgara / Haşlanmış)', per100g: { cal: 135, prot: 30.0, carb: 0.0, fat: 1.5 }, defaultUnit: 'g', defaultWeight: 100 },
+
+            // ==================== DANA ETİ (ÇİĞ VE PİŞMİŞ) ====================
+            { id: 'fs_109', category: 'Protein', name: 'Dana Biftek / Antrikot Yağsız (Çiğ)', per100g: { cal: 135, prot: 22.0, carb: 0.0, fat: 5.0 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_110', category: 'Protein', name: 'Dana Biftek / Antrikot (Izgara)', per100g: { cal: 250, prot: 26.0, carb: 0.0, fat: 15.0 }, defaultUnit: 'g', defaultWeight: 150 },
+            { id: 'fs_111', category: 'Protein', name: 'Dana Kıyma Az Yağlı %10 (Çiğ)', per100g: { cal: 176, prot: 20.0, carb: 0.0, fat: 10.0 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_112', category: 'Protein', name: 'Dana Kıyma Orta Yağlı %20 (Çiğ)', per100g: { cal: 254, prot: 17.2, carb: 0.0, fat: 20.0 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_113', category: 'Protein', name: 'Dana Kıyma (Kavrulmuş / Pişmiş)', per100g: { cal: 240, prot: 24.0, carb: 0.0, fat: 16.0 }, defaultUnit: 'tbsp', defaultWeight: 30 },
+            { id: 'fs_114', category: 'Protein', name: 'Dana Bonfile (Çiğ)', per100g: { cal: 121, prot: 21.8, carb: 0.0, fat: 3.8 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_115', category: 'Protein', name: 'Dana Bonfile (Izgara)', per100g: { cal: 192, prot: 28.0, carb: 0.0, fat: 8.5 }, defaultUnit: 'g', defaultWeight: 150 },
+            { id: 'fs_116', category: 'Protein', name: 'Dana Köfte (Izgara Ev Yapımı)', per100g: { cal: 220, prot: 18.0, carb: 3.5, fat: 15.0 }, defaultUnit: 'piece', defaultWeight: 30 },
+
+            // ==================== KUZU ETİ (ÇİĞ VE PİŞMİŞ) ====================
+            { id: 'fs_117', category: 'Protein', name: 'Kuzu Pirzola / Külbastı (Çiğ)', per100g: { cal: 216, prot: 18.0, carb: 0.0, fat: 16.0 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_118', category: 'Protein', name: 'Kuzu Pirzola (Izgara)', per100g: { cal: 280, prot: 24.5, carb: 0.0, fat: 20.0 }, defaultUnit: 'piece', defaultWeight: 60 },
+            { id: 'fs_119', category: 'Protein', name: 'Kuzu Kuşbaşı (Çiğ)', per100g: { cal: 206, prot: 17.0, carb: 0.0, fat: 15.0 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_120', category: 'Protein', name: 'Kuzu Eti (Haşlanmış / Fırın)', per100g: { cal: 265, prot: 23.0, carb: 0.0, fat: 19.0 }, defaultUnit: 'g', defaultWeight: 100 },
+
+            // ==================== BALIK & DENİZ ÜRÜNLERİ (ÇİĞ VE PİŞMİŞ) ====================
+            { id: 'fs_121', category: 'Protein', name: 'Somon Balığı (Çiğ)', per100g: { cal: 142, prot: 19.8, carb: 0.0, fat: 6.3 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_122', category: 'Protein', name: 'Somon Balığı (Fırın / Izgara)', per100g: { cal: 206, prot: 22.0, carb: 0.0, fat: 12.3 }, defaultUnit: 'g', defaultWeight: 150 },
+            { id: 'fs_123', category: 'Protein', name: 'Ton Balığı Konservesi (Süzülmüş Yağlı)', per100g: { cal: 198, prot: 29.0, carb: 0.0, fat: 8.2 }, defaultUnit: 'portion', defaultWeight: 80 },
+            { id: 'fs_124', category: 'Protein', name: 'Ton Balığı Konservesi (Sulu / Light)', per100g: { cal: 116, prot: 26.0, carb: 0.0, fat: 1.0 }, defaultUnit: 'portion', defaultWeight: 80 },
+            { id: 'fs_125', category: 'Protein', name: 'Levrek / Çupra (Çiğ)', per100g: { cal: 97, prot: 18.4, carb: 0.0, fat: 2.0 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_126', category: 'Protein', name: 'Levrek / Çupra (Fırın)', per100g: { cal: 124, prot: 20.0, carb: 0.0, fat: 4.5 }, defaultUnit: 'g', defaultWeight: 200 },
+            { id: 'fs_127', category: 'Protein', name: 'Hamsi (Çiğ)', per100g: { cal: 131, prot: 20.1, carb: 0.0, fat: 4.8 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_128', category: 'Protein', name: 'Hamsi (Tava / Fırın)', per100g: { cal: 190, prot: 22.0, carb: 3.0, fat: 10.0 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_129', category: 'Protein', name: 'Karides (Çiğ)', per100g: { cal: 85, prot: 20.1, carb: 0.2, fat: 0.5 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_130', category: 'Protein', name: 'Karides (Haşlanmış / Sote)', per100g: { cal: 99, prot: 24.0, carb: 0.2, fat: 0.3 }, defaultUnit: 'g', defaultWeight: 100 },
+
+            // ==================== TAHILLAR, BAKLİYATLAR & PİRİNÇLER (ÇİĞ VE PİŞMİŞ) ====================
+            { id: 'fs_131', category: 'Karbonhidrat', name: 'Pirinç - Baldo / Osmancık (Çiğ)', per100g: { cal: 360, prot: 6.6, carb: 79.3, fat: 0.6 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_132', category: 'Karbonhidrat', name: 'Pirinç Pilavı (Tereyağlı / Pişmiş)', per100g: { cal: 160, prot: 2.7, carb: 28.0, fat: 4.5 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_133', category: 'Karbonhidrat', name: 'Basmati Pirinç (Çiğ)', per100g: { cal: 350, prot: 7.0, carb: 77.0, fat: 0.8 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_134', category: 'Karbonhidrat', name: 'Basmati Pirinç Pilavı (Lapa / Pişmiş)', per100g: { cal: 130, prot: 2.7, carb: 28.0, fat: 0.4 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_135', category: 'Karbonhidrat', name: 'Bulgur (Çiğ)', per100g: { cal: 342, prot: 12.3, carb: 76.0, fat: 1.3 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_136', category: 'Karbonhidrat', name: 'Bulgur Pilavı (Pişmiş)', per100g: { cal: 120, prot: 3.5, carb: 23.0, fat: 1.8 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_137', category: 'Karbonhidrat', name: 'Makarna (Çiğ)', per100g: { cal: 371, prot: 13.0, carb: 74.0, fat: 1.5 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_138', category: 'Karbonhidrat', name: 'Makarna (Pişmiş / Sade)', per100g: { cal: 131, prot: 5.0, carb: 25.0, fat: 1.1 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_139', category: 'Karbonhidrat', name: 'Yulaf Ezmesi (Çiğ)', per100g: { cal: 389, prot: 16.9, carb: 66.3, fat: 6.9 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_140', category: 'Karbonhidrat', name: 'Kırmızı Mercimek (Çiğ)', per100g: { cal: 352, prot: 24.6, carb: 63.4, fat: 1.1 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_141', category: 'Karbonhidrat', name: 'Yeşil Mercimek (Çiğ)', per100g: { cal: 353, prot: 25.8, carb: 60.1, fat: 1.1 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_142', category: 'Karbonhidrat', name: 'Nohut (Çiğ)', per100g: { cal: 364, prot: 19.3, carb: 60.6, fat: 6.0 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_143', category: 'Karbonhidrat', name: 'Nohut (Haşlanmış)', per100g: { cal: 164, prot: 8.9, carb: 27.4, fat: 2.6 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_144', category: 'Karbonhidrat', name: 'Kuru Fasulye (Çiğ)', per100g: { cal: 333, prot: 23.6, carb: 60.0, fat: 0.8 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_145', category: 'Karbonhidrat', name: 'Kuru Fasulye (Haşlanmış)', per100g: { cal: 127, prot: 8.7, carb: 22.8, fat: 0.5 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_146', category: 'Karbonhidrat', name: 'Kinoa (Çiğ)', per100g: { cal: 368, prot: 14.1, carb: 64.2, fat: 6.1 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_147', category: 'Karbonhidrat', name: 'Kinoa (Pişmiş)', per100g: { cal: 120, prot: 4.4, carb: 21.3, fat: 1.9 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_148', category: 'Karbonhidrat', name: 'Karabuğday / Greçka (Çiğ)', per100g: { cal: 343, prot: 13.3, carb: 71.5, fat: 3.4 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_149', category: 'Karbonhidrat', name: 'Karabuğday (Pişmiş)', per100g: { cal: 110, prot: 4.0, carb: 21.0, fat: 0.8 }, defaultUnit: 'portion', defaultWeight: 150 },
+
+            // ==================== PATATES & DİĞER TAHIL / EKMEKLER ====================
+            { id: 'fs_150', category: 'Karbonhidrat', name: 'Patates (Çiğ)', per100g: { cal: 77, prot: 2.0, carb: 17.5, fat: 0.1 }, defaultUnit: 'piece', defaultWeight: 150 },
+            { id: 'fs_151', category: 'Karbonhidrat', name: 'Patates (Haşlanmış)', per100g: { cal: 87, prot: 1.9, carb: 20.1, fat: 0.1 }, defaultUnit: 'piece', defaultWeight: 150 },
+            { id: 'fs_152', category: 'Karbonhidrat', name: 'Patates (Fırın / Baharatlı)', per100g: { cal: 125, prot: 2.2, carb: 23.0, fat: 3.2 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_153', category: 'Karbonhidrat', name: 'Tatlı Patates (Çiğ)', per100g: { cal: 86, prot: 1.6, carb: 20.1, fat: 0.1 }, defaultUnit: 'piece', defaultWeight: 150 },
+            { id: 'fs_154', category: 'Karbonhidrat', name: 'Tatlı Patates (Fırın)', per100g: { cal: 90, prot: 2.0, carb: 21.0, fat: 0.2 }, defaultUnit: 'piece', defaultWeight: 150 },
+            { id: 'fs_155', category: 'Karbonhidrat', name: 'Tam Buğday Ekmeği', per100g: { cal: 247, prot: 13.0, carb: 41.0, fat: 3.4 }, defaultUnit: 'slice', defaultWeight: 30 },
+            { id: 'fs_156', category: 'Karbonhidrat', name: 'Beyaz Ekmek', per100g: { cal: 265, prot: 9.0, carb: 49.0, fat: 3.2 }, defaultUnit: 'slice', defaultWeight: 30 },
+            { id: 'fs_157', category: 'Karbonhidrat', name: 'Çavdar Ekmeği', per100g: { cal: 250, prot: 8.5, carb: 48.0, fat: 3.3 }, defaultUnit: 'slice', defaultWeight: 30 },
+            { id: 'fs_158', category: 'Karbonhidrat', name: 'Tortilla / Lavaş (Tam Buğday)', per100g: { cal: 290, prot: 9.0, carb: 48.0, fat: 7.0 }, defaultUnit: 'piece', defaultWeight: 40 },
+
+            // ==================== YUMURTA & SÜT ÜRÜNLERİ ====================
+            { id: 'fs_159', category: 'Kahvaltı', name: 'Yumurta (Çiğ / Tüm)', per100g: { cal: 143, prot: 12.6, carb: 0.7, fat: 9.5 }, defaultUnit: 'piece', defaultWeight: 50 },
+            { id: 'fs_160', category: 'Kahvaltı', name: 'Yumurta (Haşlanmış)', per100g: { cal: 155, prot: 12.6, carb: 1.1, fat: 10.6 }, defaultUnit: 'piece', defaultWeight: 50 },
+            { id: 'fs_161', category: 'Kahvaltı', name: 'Yumurta (Sahanda / Tavada)', per100g: { cal: 196, prot: 13.6, carb: 0.8, fat: 15.3 }, defaultUnit: 'piece', defaultWeight: 50 },
+            { id: 'fs_162', category: 'Kahvaltı', name: 'Yumurta Beyazı (Çiğ/Haşlanmış)', per100g: { cal: 52, prot: 10.9, carb: 0.7, fat: 0.2 }, defaultUnit: 'piece', defaultWeight: 33 },
+            { id: 'fs_163', category: 'Kahvaltı', name: 'Beyaz Peynir (Tam Yağlı)', per100g: { cal: 260, prot: 15.0, carb: 2.5, fat: 21.0 }, defaultUnit: 'slice', defaultWeight: 30 },
+            { id: 'fs_164', category: 'Kahvaltı', name: 'Süzme Peynir', per100g: { cal: 98, prot: 11.1, carb: 3.4, fat: 4.3 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_165', category: 'Kahvaltı', name: 'Lor Peyniri (Yağsız)', per100g: { cal: 85, prot: 17.0, carb: 1.5, fat: 1.0 }, defaultUnit: 'g', defaultWeight: 100 },
+            { id: 'fs_166', category: 'Kahvaltı', name: 'Kaşar Peyniri', per100g: { cal: 350, prot: 25.0, carb: 1.5, fat: 27.0 }, defaultUnit: 'slice', defaultWeight: 20 },
+            { id: 'fs_167', category: 'Kahvaltı', name: 'Labne Peyniri', per100g: { cal: 200, prot: 6.0, carb: 4.0, fat: 18.0 }, defaultUnit: 'tbsp', defaultWeight: 20 },
+            { id: 'fs_168', category: 'Kahvaltı', name: 'Süt (Yarım Yağlı)', per100g: { cal: 47, prot: 3.0, carb: 4.7, fat: 1.5 }, defaultUnit: 'glass', defaultWeight: 200 },
+            { id: 'fs_169', category: 'Kahvaltı', name: 'Süt (Tam Yağlı)', per100g: { cal: 61, prot: 3.2, carb: 4.8, fat: 3.3 }, defaultUnit: 'glass', defaultWeight: 200 },
+            { id: 'fs_170', category: 'Kahvaltı', name: 'Süzme Yoğurt', per100g: { cal: 117, prot: 9.0, carb: 4.0, fat: 7.0 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_171', category: 'Kahvaltı', name: 'Yoğurt (Doğal / Ev Yapımı)', per100g: { cal: 61, prot: 3.5, carb: 4.7, fat: 3.3 }, defaultUnit: 'portion', defaultWeight: 200 },
+            { id: 'fs_172', category: 'Kahvaltı', name: 'Kefir', per100g: { cal: 55, prot: 3.4, carb: 4.5, fat: 2.5 }, defaultUnit: 'glass', defaultWeight: 200 },
+            { id: 'fs_173', category: 'Protein', name: 'Whey Protein Tozu', per100g: { cal: 380, prot: 80.0, carb: 6.0, fat: 4.0 }, defaultUnit: 'portion', defaultWeight: 30 },
+
+            // ==================== KURUYEMİŞLER & TOHUMLAR ====================
+            { id: 'fs_174', category: 'Meyve & Kuruyemiş', name: 'Ceviz İçi', per100g: { cal: 654, prot: 15.2, carb: 13.7, fat: 65.2 }, defaultUnit: 'piece', defaultWeight: 5 },
+            { id: 'fs_175', category: 'Meyve & Kuruyemiş', name: 'Badem (Çiğ)', per100g: { cal: 579, prot: 21.2, carb: 21.7, fat: 49.9 }, defaultUnit: 'piece', defaultWeight: 1.2 },
+            { id: 'fs_176', category: 'Meyve & Kuruyemiş', name: 'Badem (Kavrulmuş)', per100g: { cal: 598, prot: 21.0, carb: 20.0, fat: 52.5 }, defaultUnit: 'piece', defaultWeight: 1.2 },
+            { id: 'fs_177', category: 'Meyve & Kuruyemiş', name: 'Fındık (Çiğ)', per100g: { cal: 628, prot: 15.0, carb: 16.7, fat: 60.8 }, defaultUnit: 'piece', defaultWeight: 1.5 },
+            { id: 'fs_178', category: 'Meyve & Kuruyemiş', name: 'Fındık (Kavrulmuş)', per100g: { cal: 646, prot: 15.0, carb: 17.0, fat: 62.4 }, defaultUnit: 'piece', defaultWeight: 1.5 },
+            { id: 'fs_179', category: 'Meyve & Kuruyemiş', name: 'Kaju (Çiğ)', per100g: { cal: 553, prot: 18.2, carb: 30.2, fat: 43.8 }, defaultUnit: 'piece', defaultWeight: 1.5 },
+            { id: 'fs_180', category: 'Meyve & Kuruyemiş', name: 'Kaju (Kavrulmuş)', per100g: { cal: 574, prot: 15.3, carb: 32.7, fat: 46.4 }, defaultUnit: 'piece', defaultWeight: 1.5 },
+            { id: 'fs_181', category: 'Meyve & Kuruyemiş', name: 'Antep Fıstığı (Çiğ / Kabuksuz)', per100g: { cal: 560, prot: 20.2, carb: 27.2, fat: 45.3 }, defaultUnit: 'handful', defaultWeight: 25 },
+            { id: 'fs_182', category: 'Meyve & Kuruyemiş', name: 'Yer Fıstığı (Çiğ)', per100g: { cal: 567, prot: 25.8, carb: 16.1, fat: 49.2 }, defaultUnit: 'handful', defaultWeight: 25 },
+            { id: 'fs_183', category: 'Meyve & Kuruyemiş', name: 'Fıstık Ezmesi (%100 Doğal)', per100g: { cal: 588, prot: 25.0, carb: 20.0, fat: 50.0 }, defaultUnit: 'tbsp', defaultWeight: 20 },
+            { id: 'fs_184', category: 'Meyve & Kuruyemiş', name: 'Çiğ Kabak Çekirdeği', per100g: { cal: 559, prot: 30.0, carb: 10.7, fat: 49.0 }, defaultUnit: 'handful', defaultWeight: 25 },
+            { id: 'fs_185', category: 'Meyve & Kuruyemiş', name: 'Ay Çekirdeği (Çiğ)', per100g: { cal: 584, prot: 20.8, carb: 20.0, fat: 51.5 }, defaultUnit: 'handful', defaultWeight: 25 },
+            { id: 'fs_186', category: 'Meyve & Kuruyemiş', name: 'Chia Tohumu', per100g: { cal: 486, prot: 16.5, carb: 42.1, fat: 30.7 }, defaultUnit: 'tbsp', defaultWeight: 12 },
+            { id: 'fs_187', category: 'Meyve & Kuruyemiş', name: 'Keten Tohumu', per100g: { cal: 534, prot: 18.3, carb: 28.9, fat: 42.2 }, defaultUnit: 'tbsp', defaultWeight: 10 },
+            { id: 'fs_188', category: 'Meyve & Kuruyemiş', name: 'Susam / Tahin', per100g: { cal: 595, prot: 17.0, carb: 21.0, fat: 53.0 }, defaultUnit: 'tbsp', defaultWeight: 15 },
+
+            // ==================== GENİŞLETİLMİŞ MEYVELER ====================
+            { id: 'fs_189', category: 'Meyve & Kuruyemiş', name: 'Muz', per100g: { cal: 89, prot: 1.1, carb: 22.8, fat: 0.3 }, defaultUnit: 'piece', defaultWeight: 120 },
+            { id: 'fs_190', category: 'Meyve & Kuruyemiş', name: 'Elma (Kırmızı / Yeşil)', per100g: { cal: 52, prot: 0.3, carb: 13.8, fat: 0.2 }, defaultUnit: 'piece', defaultWeight: 150 },
+            { id: 'fs_191', category: 'Meyve & Kuruyemiş', name: 'Portakal', per100g: { cal: 47, prot: 0.9, carb: 11.8, fat: 0.1 }, defaultUnit: 'piece', defaultWeight: 130 },
+            { id: 'fs_192', category: 'Meyve & Kuruyemiş', name: 'Mandalina', per100g: { cal: 53, prot: 0.8, carb: 13.3, fat: 0.3 }, defaultUnit: 'piece', defaultWeight: 80 },
+            { id: 'fs_193', category: 'Meyve & Kuruyemiş', name: 'Çilek', per100g: { cal: 32, prot: 0.7, carb: 7.7, fat: 0.3 }, defaultUnit: 'handful', defaultWeight: 100 },
+            { id: 'fs_194', category: 'Meyve & Kuruyemiş', name: 'Yaban Mersini (Blueberry)', per100g: { cal: 57, prot: 0.7, carb: 14.5, fat: 0.3 }, defaultUnit: 'handful', defaultWeight: 80 },
+            { id: 'fs_195', category: 'Meyve & Kuruyemiş', name: 'Ahududu / Böğürtlen', per100g: { cal: 43, prot: 1.2, carb: 10.0, fat: 0.5 }, defaultUnit: 'handful', defaultWeight: 80 },
+            { id: 'fs_196', category: 'Meyve & Kuruyemiş', name: 'Kivi', per100g: { cal: 61, prot: 1.1, carb: 14.7, fat: 0.5 }, defaultUnit: 'piece', defaultWeight: 75 },
+            { id: 'fs_197', category: 'Meyve & Kuruyemiş', name: 'Karpuz', per100g: { cal: 30, prot: 0.6, carb: 7.5, fat: 0.2 }, defaultUnit: 'slice', defaultWeight: 200 },
+            { id: 'fs_198', category: 'Meyve & Kuruyemiş', name: 'Kavun', per100g: { cal: 34, prot: 0.8, carb: 8.2, fat: 0.2 }, defaultUnit: 'slice', defaultWeight: 150 },
+            { id: 'fs_199', category: 'Meyve & Kuruyemiş', name: 'Üzüm (Siyah / Yeşil)', per100g: { cal: 69, prot: 0.7, carb: 18.1, fat: 0.2 }, defaultUnit: 'handful', defaultWeight: 100 },
+            { id: 'fs_200', category: 'Meyve & Kuruyemiş', name: 'Şeftali / Nektarin', per100g: { cal: 39, prot: 0.9, carb: 9.5, fat: 0.3 }, defaultUnit: 'piece', defaultWeight: 130 },
+            { id: 'fs_201', category: 'Meyve & Kuruyemiş', name: 'Erik (Taze)', per100g: { cal: 46, prot: 0.7, carb: 11.4, fat: 0.3 }, defaultUnit: 'piece', defaultWeight: 40 },
+            { id: 'fs_202', category: 'Meyve & Kuruyemiş', name: 'Armut', per100g: { cal: 57, prot: 0.4, carb: 15.0, fat: 0.1 }, defaultUnit: 'piece', defaultWeight: 150 },
+            { id: 'fs_203', category: 'Meyve & Kuruyemiş', name: 'Nar', per100g: { cal: 83, prot: 1.7, carb: 18.7, fat: 1.2 }, defaultUnit: 'portion', defaultWeight: 100 },
+            { id: 'fs_204', category: 'Meyve & Kuruyemiş', name: 'Ananas', per100g: { cal: 50, prot: 0.5, carb: 13.1, fat: 0.1 }, defaultUnit: 'slice', defaultWeight: 100 },
+            { id: 'fs_205', category: 'Meyve & Kuruyemiş', name: 'Avokado', per100g: { cal: 160, prot: 2.0, carb: 8.5, fat: 14.7 }, defaultUnit: 'piece', defaultWeight: 150 },
+            { id: 'fs_206', category: 'Meyve & Kuruyemiş', name: 'Kuru Hurma (Medjool)', per100g: { cal: 277, prot: 1.8, carb: 75.0, fat: 0.2 }, defaultUnit: 'piece', defaultWeight: 20 },
+            { id: 'fs_207', category: 'Meyve & Kuruyemiş', name: 'Kuru Kayısı', per100g: { cal: 241, prot: 3.4, carb: 63.0, fat: 0.5 }, defaultUnit: 'piece', defaultWeight: 10 },
+            { id: 'fs_208', category: 'Meyve & Kuruyemiş', name: 'Kuru İncir', per100g: { cal: 249, prot: 3.3, carb: 63.9, fat: 0.9 }, defaultUnit: 'piece', defaultWeight: 20 },
+            { id: 'fs_209', category: 'Meyve & Kuruyemiş', name: 'Kuru Üzüm', per100g: { cal: 299, prot: 3.1, carb: 79.2, fat: 0.5 }, defaultUnit: 'tbsp', defaultWeight: 15 },
+
+            // ==================== SEBZELER & YEŞİLLİKLER ====================
+            { id: 'fs_210', category: 'Kahvaltı', name: 'Taze Domates', per100g: { cal: 18, prot: 0.9, carb: 3.9, fat: 0.2 }, defaultUnit: 'piece', defaultWeight: 120 },
+            { id: 'fs_211', category: 'Kahvaltı', name: 'Salatalık', per100g: { cal: 15, prot: 0.7, carb: 3.6, fat: 0.1 }, defaultUnit: 'piece', defaultWeight: 100 },
+            { id: 'fs_212', category: 'Karbonhidrat', name: 'Brokoli (Çiğ)', per100g: { cal: 34, prot: 2.8, carb: 6.6, fat: 0.4 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_213', category: 'Karbonhidrat', name: 'Brokoli (Haşlanmış)', per100g: { cal: 35, prot: 2.4, carb: 7.2, fat: 0.4 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_214', category: 'Karbonhidrat', name: 'Ispanak (Çiğ)', per100g: { cal: 23, prot: 2.9, carb: 3.6, fat: 0.4 }, defaultUnit: 'portion', defaultWeight: 100 },
+            { id: 'fs_215', category: 'Karbonhidrat', name: 'Ispanak (Sote / Haşlanmış)', per100g: { cal: 23, prot: 3.0, carb: 3.8, fat: 0.3 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_216', category: 'Karbonhidrat', name: 'Kabak (Çiğ)', per100g: { cal: 17, prot: 1.2, carb: 3.1, fat: 0.2 }, defaultUnit: 'piece', defaultWeight: 150 },
+            { id: 'fs_217', category: 'Karbonhidrat', name: 'Kabak (Sote / Fırın)', per100g: { cal: 20, prot: 1.2, carb: 3.5, fat: 0.3 }, defaultUnit: 'piece', defaultWeight: 150 },
+            { id: 'fs_218', category: 'Karbonhidrat', name: 'Patlıcan (Fırın)', per100g: { cal: 25, prot: 1.0, carb: 5.9, fat: 0.2 }, defaultUnit: 'piece', defaultWeight: 150 },
+            { id: 'fs_219', category: 'Karbonhidrat', name: 'Karnabahar', per100g: { cal: 25, prot: 1.9, carb: 5.0, fat: 0.3 }, defaultUnit: 'portion', defaultWeight: 150 },
+            { id: 'fs_220', category: 'Kahvaltı', name: 'Marul / Kıvırcık / Göbek', per100g: { cal: 15, prot: 1.4, carb: 2.9, fat: 0.2 }, defaultUnit: 'portion', defaultWeight: 100 },
+            { id: 'fs_221', category: 'Kahvaltı', name: 'Zeytin (Siyah)', per100g: { cal: 115, prot: 0.8, carb: 6.0, fat: 10.7 }, defaultUnit: 'piece', defaultWeight: 5 },
+            { id: 'fs_222', category: 'Kahvaltı', name: 'Zeytin (Yeşil)', per100g: { cal: 145, prot: 1.0, carb: 3.8, fat: 15.3 }, defaultUnit: 'piece', defaultWeight: 5 },
+
+            // ==================== SAĞLIKLI YAĞLAR & DİĞER ====================
+            { id: 'fs_223', category: 'Protein', name: 'Zeytinyağı', per100g: { cal: 884, prot: 0.0, carb: 0.0, fat: 100.0 }, defaultUnit: 'tbsp', defaultWeight: 10 },
+            { id: 'fs_224', category: 'Protein', name: 'Tereyağı', per100g: { cal: 717, prot: 0.9, carb: 0.1, fat: 81.0 }, defaultUnit: 'tbsp', defaultWeight: 10 },
+            { id: 'fs_225', category: 'Meyve & Kuruyemiş', name: 'Bitter Çikolata (%70+ Kakaolu)', per100g: { cal: 598, prot: 7.8, carb: 45.9, fat: 42.6 }, defaultUnit: 'slice', defaultWeight: 10 },
+            { id: 'fs_226', category: 'Protein', name: 'Tavuk Sote', per100g: { cal: 140, prot: 18.0, carb: 4.0, fat: 5.5 }, defaultUnit: 'portion', defaultWeight: 200 },
+            { id: 'fs_227', category: 'Karbonhidrat', name: 'Mercimek Çorbası', per100g: { cal: 56, prot: 3.2, carb: 8.5, fat: 1.2 }, defaultUnit: 'portion', defaultWeight: 250 }
+        ];
+
+        // State Management
+        let appData = {
+            profile: { gender: 'male', age: 25, height: 175, weight: 70, activity: '1.375', goal: '0' },
+            logs: {},
+        };
+
+        let selectedDate = new Date().toISOString().split('T')[0];
+        let currentSelectedFood = null;
+        let analyticsRange = 7;
+        let chartInstances = {};
+
+        // Application Initialization
+        window.onload = function() {
+            loadLocalStorage();
+            initDateInput();
+            setupQuickFoodTags();
+            renderAllViews();
+            initCharts();
+
+            if (localStorage.getItem('fit_theme') === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+        };
+
+        function loadLocalStorage() {
+            const saved = localStorage.getItem('fit_takip_data');
+            if (saved) {
+                try {
+                    appData = JSON.parse(saved);
+                } catch(e) { console.error('Error parsing storage', e); }
+            }
+            ensureDateEntry(selectedDate);
+        }
+
+        function ensureDateEntry(dateStr) {
+            if (!appData.logs[dateStr]) {
+                appData.logs[dateStr] = {
+                    meals: [],
+                    water: 0,
+                    waterLogs: [],
+                    weight: appData.profile.weight || 70
+                };
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('fit_takip_data', JSON.stringify(appData));
+        }
+
+        function initDateInput() {
+            document.getElementById('selectedDateInput').value = selectedDate;
+        }
+
+        function onDateInputChange(e) {
+            selectedDate = e.target.value;
+            ensureDateEntry(selectedDate);
+            renderAllViews();
+            updateCharts();
+        }
+
+        function changeDate(days) {
+            const current = new Date(selectedDate);
+            current.setDate(current.getDate() + days);
+            selectedDate = current.toISOString().split('T')[0];
+            document.getElementById('selectedDateInput').value = selectedDate;
+            ensureDateEntry(selectedDate);
+            renderAllViews();
+            updateCharts();
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('fit_theme', isDark ? 'dark' : 'light');
+            updateCharts();
+        }
+
+        // Navigation Switcher
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn-desktop').forEach(btn => {
+                if (btn.dataset.tab === tabId) {
+                    btn.className = 'tab-btn-desktop flex-1 py-2.5 px-4 rounded-xl font-medium text-sm transition flex items-center justify-center space-x-2 bg-white dark:bg-gray-700 text-brand-600 dark:text-brand-400 shadow-sm';
+                } else {
+                    btn.className = 'tab-btn-desktop flex-1 py-2.5 px-4 rounded-xl font-medium text-sm transition flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-gray-900';
+                }
+            });
+
+            document.querySelectorAll('.tab-btn-mobile').forEach(btn => {
+                if (btn.dataset.tab === tabId) {
+                    btn.className = 'tab-btn-mobile flex flex-col items-center py-1.5 rounded-xl text-brand-500 font-medium';
+                } else {
+                    btn.className = 'tab-btn-mobile flex flex-col items-center py-1.5 rounded-xl text-gray-500 dark:text-gray-400';
+                }
+            });
+
+            if (tabId === 'analytics') {
+                updateCharts();
+            }
+        }
+
+        // RENDER VIEWS
+        function renderAllViews() {
+            ensureDateEntry(selectedDate);
+            const log = appData.logs[selectedDate];
+            const targets = getTargets();
+
+            // Totals
+            let totalCal = 0, totalProt = 0, totalCarb = 0, totalFat = 0;
+            (log.meals || []).forEach(m => {
+                totalCal += Number(m.cal) || 0;
+                totalProt += Number(m.prot) || 0;
+                totalCarb += Number(m.carb) || 0;
+                totalFat += Number(m.fat) || 0;
+            });
+
+            // Update Dashboard Macros
+            document.getElementById('dashCalTotal').innerText = Math.round(totalCal);
+            document.getElementById('dashCalTarget').innerText = `/ ${targets.cal} kcal`;
+            document.getElementById('dashCalBar').style.width = `${Math.min(100, (totalCal / targets.cal) * 100)}%`;
+
+            document.getElementById('dashProteinTotal').innerText = `${Math.round(totalProt)}g`;
+            document.getElementById('dashProteinTarget').innerText = `/ ${targets.prot}g`;
+            document.getElementById('dashProteinBar').style.width = `${Math.min(100, (totalProt / targets.prot) * 100)}%`;
+
+            document.getElementById('dashCarbTotal').innerText = `${Math.round(totalCarb)}g`;
+            document.getElementById('dashCarbTarget').innerText = `/ ${targets.carb}g`;
+            document.getElementById('dashCarbBar').style.width = `${Math.min(100, (totalCarb / targets.carb) * 100)}%`;
+
+            document.getElementById('dashFatTotal').innerText = `${Math.round(totalFat)}g`;
+            document.getElementById('dashFatTarget').innerText = `/ ${targets.fat}g`;
+            document.getElementById('dashFatBar').style.width = `${Math.min(100, (totalFat / targets.fat) * 100)}%`;
+
+            // Update Dashboard Weight Box
+            const currentWeight = log.weight !== undefined && log.weight !== null ? log.weight : appData.profile.weight;
+            document.getElementById('dashWeightBadge').innerText = `${currentWeight || '--'} kg`;
+            document.getElementById('dashWeightValue').innerText = currentWeight || '--';
+
+            // Dashboard Water
+            const waterVal = log.water || 0;
+            document.getElementById('dashWaterText').innerText = `${waterVal} / ${targets.water} ml`;
+            document.getElementById('dashWaterBar').style.width = `${Math.min(100, (waterVal / targets.water) * 100)}%`;
+            document.getElementById('waterMainTotal').innerText = `${waterVal} / ${targets.water} ml`;
+            document.getElementById('waterMainBar').style.width = `${Math.min(100, (waterVal / targets.water) * 100)}%`;
+
+            renderDashboardMealsSummary(log.meals || []);
+            renderMealsTab(log.meals || []);
+            renderWaterLogs(log.waterLogs || []);
+            loadProfileForm();
+        }
+
+        function getTargets() {
+            const p = appData.profile;
+            const bmr = (p.gender === 'male')
+                ? (10 * p.weight + 6.25 * p.height - 5 * p.age + 5)
+                : (10 * p.weight + 6.25 * p.height - 5 * p.age - 161);
+            const tdee = bmr * parseFloat(p.activity || 1.375);
+            const goalCal = Math.max(1200, Math.round(tdee + parseFloat(p.goal || 0)));
+
+            return {
+                cal: goalCal,
+                prot: Math.round((goalCal * 0.25) / 4),
+                carb: Math.round((goalCal * 0.50) / 4),
+                fat: Math.round((goalCal * 0.25) / 9),
+                water: Math.round(p.weight * 35) || 2500
+            };
+        }
+
+        function renderDashboardMealsSummary(meals) {
+            const container = document.getElementById('dashMealsSummaryList');
+            if (!meals || meals.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-gray-400 text-xs">Henüz bu tarihte girilmiş yiyecek yok.</div>`;
+                return;
+            }
+
+            container.innerHTML = meals.map(m => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                    <div>
+                        <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">${escapeHtml(m.name)}</div>
+                        <div class="text-xs text-gray-400">${m.mealType} • ${m.amount} ${getUnitLabel(m.unit)}</div>
+                    </div>
+                    <div class="text-right">
+                        <span class="font-bold text-sm text-brand-600 dark:text-brand-400">${Math.round(m.cal)} kcal</span>
+                        <div class="text-[10px] text-gray-400">P:${Math.round(m.prot)}g K:${Math.round(m.carb)}g Y:${Math.round(m.fat)}g</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderMealsTab(meals) {
+            const container = document.getElementById('mealsContainer');
+            const categories = ['Kahvaltı', 'Öğle Yemeği', 'Akşam Yemeği', 'Atıştırmalık / Ara Öğün'];
+
+            container.innerHTML = categories.map(cat => {
+                const catMeals = meals.filter(m => m.mealType === cat);
+                const catCal = catMeals.reduce((acc, curr) => acc + Number(curr.cal || 0), 0);
+
+                return `
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/60">
+                        <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50 pb-3 mb-3">
+                            <div class="flex items-center space-x-2">
+                                <span class="font-bold text-gray-800 dark:text-white text-base">${cat}</span>
+                                <span class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full font-semibold">${Math.round(catCal)} kcal</span>
+                            </div>
+                            <button onclick="openMealModal('${cat}')" class="text-xs bg-brand-50 text-brand-600 dark:bg-brand-900/30 dark:text-brand-300 px-3 py-1.5 rounded-xl font-semibold hover:bg-brand-100 transition">
+                                + Ekle
+                            </button>
+                        </div>
+
+                        <div class="space-y-2">
+                            ${catMeals.length === 0 ? '<p class="text-xs text-gray-400 italic py-1">Kayıt yok</p>' : catMeals.map(m => `
+                                <div class="flex items-center justify-between p-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-xl transition">
+                                    <div class="flex-1">
+                                        <div class="font-medium text-sm text-gray-800 dark:text-gray-100">${escapeHtml(m.name)}</div>
+                                        <div class="text-xs text-gray-400">${m.amount} ${getUnitLabel(m.unit)} \vert{} P:${m.prot}g • K: ${m.carb}g • Y: ${m.fat}g</div>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <span class="font-semibold text-sm text-gray-700 dark:text-gray-200">${Math.round(m.cal)} kcal</span>
+                                        <button onclick="deleteMeal('${m.id}')" class="text-gray-400 hover:text-rose-500 transition">
+                                            <i class="fa-solid fa-trash-can text-sm"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- ARAMA MOTORU VE YEREL VERİTABANI ARAMASI ---
+        async function searchLocalDatabase(query) {
+            const spinner = document.getElementById('searchSpinner');
+            if (spinner) spinner.classList.remove('hidden');
+
+            try {
+                const normalizedQ = query.toLocaleLowerCase('tr-TR').trim();
+                const results = LOCAL_FOOD_DATABASE.filter(f => 
+                    f.name.toLocaleLowerCase('tr-TR').includes(normalizedQ)
+                );
+                await new Promise(resolve => setTimeout(resolve, 50));
+                return results;
+            } catch(e) {
+                console.error("Arama Hatası:", e);
+                return [];
+            } finally {
+                if (spinner) spinner.classList.add('hidden');
+            }
+        }
+
+        let searchDebounce = null;
+        async function onFoodSearchInput(val) {
+            clearTimeout(searchDebounce);
+            const list = document.getElementById('autocompleteList');
+            if (!val || val.trim().length < 1) {
+                list.classList.add('hidden');
+                return;
+            }
+
+            searchDebounce = setTimeout(async () => {
+                const results = await searchLocalDatabase(val);
+                if (results.length === 0) {
+                    list.innerHTML = `<div class="p-3 text-xs text-gray-400 text-center">Besin bulunamadı. Değerleri manuel girebilirsiniz.</div>`;
+                } else {
+                    list.innerHTML = results.map(item => `
+                        <div onclick='selectFoodItem(${JSON.stringify(item)})' class="p-3 hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer border-b border-gray-100 dark:border-gray-700/40 last:border-none flex items-center justify-between">
+                            <div>
+                                <div class="text-sm font-semibold text-gray-800 dark:text-white">${escapeHtml(item.name)}</div>
+                                <div class="text-[11px] text-gray-400">100g: ${item.per100g.cal} kcal | P:${item.per100g.prot}g K:${item.per100g.carb}g Y:${item.per100g.fat}g</div>
+                            </div>
+                            <span class="text-[10px] font-semibold bg-gray-100 dark:bg-gray-700 text-gray-500 px-2 py-1 rounded-lg">${item.category || 'Besin'}</span>
+                        </div>
+                    `).join('');
+                }
+                list.classList.remove('hidden');
+            }, 100);
+        }
+
+        function selectFoodItem(item) {
+            currentSelectedFood = item;
+            document.getElementById('foodSearchInput').value = item.name;
+            document.getElementById('autocompleteList').classList.add('hidden');
+
+            document.getElementById('foodAmount').value = item.defaultWeight || 100;
+            document.getElementById('foodUnit').value = item.defaultUnit || 'g';
+
+            recalculateMacros();
+        }
+
+        // Çoklu Birim Desteği İçin Katsayı Hesaplama Fonksiyonu
+        function getUnitWeightInGrams(unit, defaultWeight) {
+            const baseWeight = defaultWeight || 100;
+            switch (unit) {
+                case 'g': return 1;
+                case 'piece':
+                case 'portion': return baseWeight;
+                case 'slice': return baseWeight;
+                case 'handful': return 25;
+                case 'tbsp': return 15;
+                case 'glass': return 200;
+                default: return 1;
+            }
+        }
+
+        function recalculateMacros() {
+            const amount = parseFloat(document.getElementById('foodAmount').value) || 0;
+            const unit = document.getElementById('foodUnit').value;
+
+            if (currentSelectedFood && currentSelectedFood.per100g) {
+                const unitWeight = getUnitWeightInGrams(unit, currentSelectedFood.defaultWeight);
+                const totalGrams = amount * unitWeight;
+                const multiplier = totalGrams / 100;
+
+                document.getElementById('foodCal').value = (currentSelectedFood.per100g.cal * multiplier).toFixed(1);
+                document.getElementById('foodProt').value = (currentSelectedFood.per100g.prot * multiplier).toFixed(1);
+                document.getElementById('foodCarb').value = (currentSelectedFood.per100g.carb * multiplier).toFixed(1);
+                document.getElementById('foodFat').value = (currentSelectedFood.per100g.fat * multiplier).toFixed(1);
+            }
+        }
+
+        function getUnitLabel(unit) {
+            const labels = {
+                'g': 'g',
+                'portion': 'Porsiyon',
+                'piece': 'Adet',
+                'slice': 'Dilim',
+                'handful': 'Avuç',
+                'tbsp': 'Y.Kaşığı',
+                'glass': 'Su Bardağı'
+            };
+            return labels[unit] || unit;
+        }
+
+        function setupQuickFoodTags() {
+            const container = document.getElementById('quickFoodTags');
+            // Hızlı seçim kartları (Popüler öğeler)
+            const quicks = [
+                LOCAL_FOOD_DATABASE.find(f => f.id === 'fs_160'), // Yumurta Haşlanmış
+                LOCAL_FOOD_DATABASE.find(f => f.id === 'fs_102'), // Tavuk Göğsü Izgara
+                LOCAL_FOOD_DATABASE.find(f => f.id === 'fs_101'), // Tavuk Göğsü Çiğ
+                LOCAL_FOOD_DATABASE.find(f => f.id === 'fs_139'), // Yulaf Ezmesi
+                LOCAL_FOOD_DATABASE.find(f => f.id === 'fs_175'), // Badem Çiğ
+                LOCAL_FOOD_DATABASE.find(f => f.id === 'fs_189')  // Muz
+            ].filter(Boolean);
+
+            container.innerHTML = quicks.map(f => `
+                <button type="button" onclick='selectFoodItem(${JSON.stringify(f)})' class="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-xs text-gray-700 dark:text-gray-200 transition">
+                    ${escapeHtml(f.name)}
+                </button>
+            `).join('');
+        }
+
+        // MEAL MODAL CONTROLS
+        function openMealModal(cat = 'Kahvaltı') {
+            document.getElementById('mealTypeSelect').value = cat;
+            document.getElementById('foodSearchInput').value = '';
+            document.getElementById('foodAmount').value = 100;
+            document.getElementById('foodCal').value = '';
+            document.getElementById('foodProt').value = '';
+            document.getElementById('foodCarb').value = '';
+            document.getElementById('foodFat').value = '';
+            currentSelectedFood = null;
+
+            document.getElementById('mealModal').classList.remove('hidden');
+        }
+
+        function closeMealModal() {
+            document.getElementById('mealModal').classList.add('hidden');
+            document.getElementById('autocompleteList').classList.add('hidden');
+        }
+
+        function saveMealItem(e) {
+            e.preventDefault();
+            ensureDateEntry(selectedDate);
+
+            const newItem = {
+                id: Date.now().toString(),
+                mealType: document.getElementById('mealTypeSelect').value,
+                name: document.getElementById('foodSearchInput').value,
+                amount: parseFloat(document.getElementById('foodAmount').value) || 100,
+                unit: document.getElementById('foodUnit').value,
+                cal: parseFloat(document.getElementById('foodCal').value) || 0,
+                prot: parseFloat(document.getElementById('foodProt').value) || 0,
+                carb: parseFloat(document.getElementById('foodCarb').value) || 0,
+                fat: parseFloat(document.getElementById('foodFat').value) || 0,
+            };
+
+            appData.logs[selectedDate].meals.push(newItem);
+            saveData();
+            renderAllViews();
+            closeMealModal();
+        }
+
+        function deleteMeal(id) {
+            ensureDateEntry(selectedDate);
+            appData.logs[selectedDate].meals = appData.logs[selectedDate].meals.filter(m => m.id !== id);
+            saveData();
+            renderAllViews();
+        }
+
+        // WATER LOGIC
+        function addWater(amount) {
+            ensureDateEntry(selectedDate);
+            const log = appData.logs[selectedDate];
+            log.water = (log.water || 0) + amount;
+            
+            if (!log.waterLogs) log.waterLogs = [];
+            log.waterLogs.unshift({
+                id: Date.now().toString(),
+                time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+                amount: amount
+            });
+
+            saveData();
+            renderAllViews();
+        }
+
+        function resetWater() {
+            ensureDateEntry(selectedDate);
+            appData.logs[selectedDate].water = 0;
+            appData.logs[selectedDate].waterLogs = [];
+            saveData();
+            renderAllViews();
+        }
+
+        function renderWaterLogs(waterLogs) {
+            const container = document.getElementById('waterLogsList');
+            if (!waterLogs || waterLogs.length === 0) {
+                container.innerHTML = `<div class="text-gray-400 text-xs italic">Kayıtlı su girişi yok.</div>`;
+                return;
+            }
+            container.innerHTML = waterLogs.map(l => `
+                <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700/40 rounded-xl">
+                    <span class="text-gray-500"><i class="fa-regular fa-clock mr-1"></i>${l.time}</span>
+                    <span class="font-bold text-sky-500">+${l.amount} ml</span>
+                </div>
+            `).join('');
+        }
+
+        // WEIGHT LOGIC
+        function openWeightModal() {
+            ensureDateEntry(selectedDate);
+            const currentWeight = appData.logs[selectedDate].weight || appData.profile.weight || 70;
+            document.getElementById('weightInput').value = currentWeight;
+            document.getElementById('weightModalDateLabel').innerText = `Seçili Tarih: ${selectedDate}`;
+            document.getElementById('weightModal').classList.remove('hidden');
+        }
+
+        function closeWeightModal() {
+            document.getElementById('weightModal').classList.add('hidden');
+        }
+
+        function saveWeight(e) {
+            e.preventDefault();
+            const val = parseFloat(document.getElementById('weightInput').value);
+            if (val) {
+                ensureDateEntry(selectedDate);
+                appData.logs[selectedDate].weight = val;
+                appData.profile.weight = val;
+                saveData();
+                renderAllViews();
+                updateCharts();
+            }
+            closeWeightModal();
+        }
+
+        // PROFILE LOGIC
+        function loadProfileForm() {
+            const p = appData.profile;
+            document.getElementById('profGender').value = p.gender || 'male';
+            document.getElementById('profAge').value = p.age || 25;
+            document.getElementById('profHeight').value = p.height || 175;
+            document.getElementById('profWeight').value = p.weight || 70;
+            document.getElementById('profActivity').value = p.activity || '1.375';
+            document.getElementById('profGoal').value = p.goal || '0';
+
+            const targets = getTargets();
+            const bmr = (p.gender === 'male')
+                ? (10 * p.weight + 6.25 * p.height - 5 * p.age + 5)
+                : (10 * p.weight + 6.25 * p.height - 5 * p.age - 161);
+            const tdee = bmr * parseFloat(p.activity || 1.375);
+
+            document.getElementById('calcBMR').innerText = `${Math.round(bmr)} kcal`;
+            document.getElementById('calcTDEE').innerText = `${Math.round(tdee)} kcal`;
+            document.getElementById('calcGoalCal').innerText = `${targets.cal} kcal`;
+            document.getElementById('calcGoalWater').innerText = `${targets.water} ml`;
+        }
+
+        function saveProfile(e) {
+            e.preventDefault();
+            appData.profile = {
+                gender: document.getElementById('profGender').value,
+                age: parseFloat(document.getElementById('profAge').value) || 25,
+                height: parseFloat(document.getElementById('profHeight').value) || 175,
+                weight: parseFloat(document.getElementById('profWeight').value) || 70,
+                activity: document.getElementById('profActivity').value,
+                goal: document.getElementById('profGoal').value
+            };
+            saveData();
+            renderAllViews();
+            updateCharts();
+        }
+
+        // ANALYTICS & CHARTS
+        function setAnalyticsRange(days) {
+            analyticsRange = days;
+            document.getElementById('range7Btn').className = days === 7 
+                ? 'px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white shadow-sm'
+                : 'px-3 py-1.5 rounded-lg text-gray-500 hover:text-gray-800 dark:hover:text-white';
+            document.getElementById('range30Btn').className = days === 30 
+                ? 'px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white shadow-sm'
+                : 'px-3 py-1.5 rounded-lg text-gray-500 hover:text-gray-800 dark:hover:text-white';
+
+            updateCharts();
+        }
+
+        function getPastDates(days) {
+            const dates = [];
+            for (let i = days - 1; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                dates.push(d.toISOString().split('T')[0]);
+            }
+            return dates;
+        }
+
+        function initCharts() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+            const textColor = isDark ? '#9ca3af' : '#6b7280';
+
+            // Calorie Chart
+            const ctxCal = document.getElementById('calorieChart').getContext('2d');
+            chartInstances.calorie = new Chart(ctxCal, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Kalori (kcal)', data: [], backgroundColor: '#22c55e', borderRadius: 8 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false }, ticks: { color: textColor } }, y: { grid: { color: gridColor }, ticks: { color: textColor } } } }
+            });
+
+            // Weight Chart
+            const ctxWeight = document.getElementById('weightChart').getContext('2d');
+            chartInstances.weight = new Chart(ctxWeight, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'Kilo (kg)', data: [], borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.3 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false }, ticks: { color: textColor } }, y: { grid: { color: gridColor }, ticks: { color: textColor } } } }
+            });
+
+            // Macro Chart
+            const ctxMacro = document.getElementById('macroChart').getContext('2d');
+            chartInstances.macro = new Chart(ctxMacro, {
+                type: 'doughnut',
+                data: { labels: ['Protein', 'Karbonhidrat', 'Yağ'], datasets: [{ data: [0, 0, 0], backgroundColor: ['#3b82f6', '#f59e0b', '#f43f5e'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: textColor } } } }
+            });
+
+            // Water Chart
+            const ctxWater = document.getElementById('waterChart').getContext('2d');
+            chartInstances.water = new Chart(ctxWater, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Su (ml)', data: [], backgroundColor: '#0ea5e9', borderRadius: 8 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false }, ticks: { color: textColor } }, y: { grid: { color: gridColor }, ticks: { color: textColor } } } }
+            });
+
+            updateCharts();
+        }
+
+        function updateCharts() {
+            if (!chartInstances.calorie) return;
+
+            const dates = getPastDates(analyticsRange);
+            const labels = dates.map(d => d.slice(5));
+
+            const calData = [];
+            const waterData = [];
+            const weightData = [];
+
+            let sumProt = 0, sumCarb = 0, sumFat = 0;
+            let lastKnownWeight = appData.profile.weight || 70;
+
+            dates.forEach(d => {
+                const log = appData.logs[d];
+                if (log) {
+                    let c = 0, p = 0, cb = 0, f = 0;
+                    (log.meals || []).forEach(m => {
+                        c += Number(m.cal) || 0;
+                        p += Number(m.prot) || 0;
+                        cb += Number(m.carb) || 0;
+                        f += Number(m.fat) || 0;
+                    });
+                    calData.push(c);
+                    waterData.push(log.water || 0);
+
+                    sumProt += p;
+                    sumCarb += cb;
+                    sumFat += f;
+
+                    if (log.weight !== undefined && log.weight !== null) {
+                        lastKnownWeight = log.weight;
+                    }
+                    weightData.push(lastKnownWeight);
+                } else {
+                    calData.push(0);
+                    waterData.push(0);
+                    weightData.push(lastKnownWeight);
+                }
+            });
+
+            chartInstances.calorie.data.labels = labels;
+            chartInstances.calorie.data.datasets[0].data = calData;
+            chartInstances.calorie.update();
+
+            chartInstances.weight.data.labels = labels;
+            chartInstances.weight.data.datasets[0].data = weightData;
+            chartInstances.weight.update();
+
+            chartInstances.water.data.labels = labels;
+            chartInstances.water.data.datasets[0].data = waterData;
+            chartInstances.water.update();
+
+            chartInstances.macro.data.datasets[0].data = [
+                Math.round(sumProt / analyticsRange),
+                Math.round(sumCarb / analyticsRange),
+                Math.round(sumFat / analyticsRange)
+            ];
+            chartInstances.macro.update();
+        }
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+    </script>
+</body>
+</html>
